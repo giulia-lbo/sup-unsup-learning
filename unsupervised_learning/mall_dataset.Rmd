@@ -1,0 +1,203 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+df<-read_csv("Mall_Customers.csv")
+head(df)
+```
+```{r}
+gender_colors <- c('#36369c', '#d98600')
+
+df %>% 
+  group_by(Gender) %>% 
+  dplyr::summarise(count = n()) %>% 
+  mutate(perc = count/sum(count)*100) %>% 
+  ggplot(aes(x    = Gender,
+             y    = perc,
+             fill = Gender)) +
+  geom_bar(stat        = "identity",
+           alpha       = 0.7,
+           show.legend = FALSE,
+           color       = 'black') +
+  scale_fill_manual(values = gender_colors) +
+  geom_text(aes(label = paste0(perc, "%")),
+            vjust    = -0.5,
+            color    = "black",
+            position = position_dodge(0.9),
+            size     = 3.5) + ylim(0, 60) +
+  labs(title = "Gender Distribution",
+       x     = "",
+       y     = "Percent")
+```
+```{r}
+#Categorical
+library(factoextra)
+show<-df[,-2]
+# Compute Hopkins statistic for iris dataset
+res <- get_clust_tendency(show, n = nrow(df)-1)
+res$hopkins_stat
+```
+
+```{r}
+library(GGally)#scatterplot of pair, Pearson corr value
+options(repr.plot.width=12, repr.plot.height=8)
+ggpairs(df,aes(color=Gender))+theme_bw(base_size = 16)
+```
+
+
+```{r}
+df$Gender<-as.numeric(as.character(factor(df$Gender, c("Male", "Female"), labels=c(1,0))))
+dfs<-scale(df)
+sum(is.na(dfs)) #-No NA values
+```
+```{r}
+
+```
+
+
+
+```{r}
+show
+show<-df[,-1]
+cor(show)
+```
+```{r}
+## K estimation using Elbow approach
+wss<-0
+for (n in 1:10){
+    km<-kmeans(dfs, centers=n, nstart=10, iter.max=50) #starts with random centroids 10 times
+    wss[n]<-km$tot.withinss
+}
+options(repr.plot.width=5, repr.plot.height=5)
+plot(wss, type="b", xlab="Number of clusters (n)", ylab="Sum of squares within groups")
+
+```
+
+
+```{r}
+set.seed(1)
+km<-kmeans(dfs, centers=5, nstart=5, iter.max=500)
+km
+```
+```{r}
+df$kmeans = km$cluster
+df%>%
+  group_by(kmeans)%>%
+  summarise(Age_mean= mean(Age),
+          AnIncome_mean= mean(AnnIncomekDoll),
+          SpenScore_mean= mean(SpendingScore),
+          Gender=(mean(Gender)),
+          Count=(length(kmeans)))
+
+```
+```{r}
+#Silh plot
+library(factoextra)
+fviz_silhouette(eclust(dfs, FUNcluster="kmeans", k=5, hc_metric="euclidean"))
+
+```
+```{r}
+hm<-hclust(dist(dfs)) # Euclidian distance and complete linkage as default
+options(repr.plot.width=15, repr.plot.height=6)
+plot(hm)
+```
+```{r}
+
+df$hclust <- cutree(hm, k = 4)
+
+df%>%
+group_by(hclust)%>%
+summarise(Age_mean= mean(Age),
+          AnIncome_mean= mean(AnnIncomekDoll),
+          SpenScore_mean= mean(SpendingScore),
+          Gender=(mean(Gender)),
+          Count=(length(hclust)))
+```
+```{r}
+fviz_cluster(eclust(dfs,FUNcluster="hclust", k=4, hc_metric="euclidean", hc_method="complete"), dfs, geom = "point")
+fviz_silhouette(eclust(dfs, FUNcluster="hclust", k=4, hc_metric="euclidean"))
+
+```
+```{r}
+#DBSCAN 
+#optimal eps-find elbow
+library(dbscan)
+options(repr.plot.width=5, repr.plot.height=5)
+kNNdistplot(dfs, k=3) # k= MinPoints
+```
+```{r}
+set.seed(1)
+dm<-fpc::dbscan(dfs, eps=0.8, MinPts=3)
+df$dbscan = dm$cluster
+df%>%
+  group_by(dbscan)%>%
+  summarise(Age_mean= mean(Age),
+          AnIncome_mean= mean(AnnIncomekDoll),
+          SpenScore_mean= mean(SpendingScore),
+          Gender=(mean(Gender)),
+          Count=(length(kmeans)))
+```
+```{r}
+fviz_cluster(dm, dfs, geom = "point")
+
+```
+```{r}
+library("cluster")
+fviz_silhouette(silhouette(df$dbscan , dist(dfs)))
+
+```
+
+
+
+```{r}
+set.seed(1)
+km<-kmeans(dfs, centers=5, nstart=5, iter.max=500)
+km
+```
+```{r}
+df$kmeans = km$cluster
+df%>%
+group_by(kmeans)%>%
+summarise(Age_mean= mean(Age),
+          AnIncome_mean= mean(AnnIncomekDoll),
+          SpenScore_mean= mean(SpendingScore),
+          Gender=(mean(Gender)),
+          Count=(length(kmeans)))
+```
+```{r}
+#Silh plot
+library(factoextra)
+fviz_silhouette(eclust(dfs, FUNcluster="kmeans", k=5, hc_metric="euclidean"))
+
+```
+```{r}
+hm<-hclust(dist(dfs)) # Euclidian distance and complete linkage as default
+options(repr.plot.width=15, repr.plot.height=6)
+plot(hm)
+```
+```{r}
+
+df$hclust <- cutree(hm, k = 4)
+
+df%>%
+group_by(hclust)%>%
+summarise(Age_mean= mean(Age),
+          AnIncome_mean= mean(AnnIncomekDoll),
+          SpenScore_mean= mean(SpendingScore),
+          Gender=(mean(Gender)),
+          Count=(length(hclust)))
+```
+```{r}
+fviz_cluster(eclust(dfs,FUNcluster="hclust", k=4, hc_metric="euclidean", hc_method="complete"), dfs, geom = "point")
+```
+```{r}
+fviz_silhouette(eclust(dfs,FUNcluster="hclust", k=4, hc_metric="euclidean", hc_method="complete"))
+
+```

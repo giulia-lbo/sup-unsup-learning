@@ -1,0 +1,139 @@
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+library(tidyverse)
+base_glass<-read_csv("glass.csv")
+head(base_glass)
+```
+```{r}
+names(base_glass)<-c("refractive index","sodium","magnesium","aluminium","silicon","potassium","calcium","barium","iron","type of glass")
+head(base_glass,5)
+```
+```{r}
+#type class to categorical
+base_glass$`type of glass`<-as_factor(base_glass$`type of glass`)
+base_glass$`type of glass`
+```
+```{r}
+#Check missing values
+sum(is.na(base_glass))
+
+```
+```{r}
+summary(base_glass)
+```
+
+
+```{r}
+#Correlation between attr
+cor_base_glass<-cor(base_glass[,1:9])
+cor_base_glass
+library(corrplot)
+
+corrplot(cor_base_glass,method = "color",type = "upper",tl.srt = 45,tl.col = "black",addCoef.col = "#8B6969",col=c("#00688B","#00868B","#00CDCD","#BBFFFF","#E0FFFF","#FFFAFA","#B0E2FF","#87CEFF","#1C86EE","#104E8B","#00008B"))
+```
+```{r}
+#Distribution 
+base_glass %>% 
+    ggplot()+
+        geom_bar(mapping = aes(x = `type of glass`,fill=`type of glass`),color="white")
+```
+```{r}
+#Standardize
+base_glass[,1:9]<-scale(base_glass[,-10])
+head(base_glass)
+```
+```{r}
+#Split db
+library(caTools)
+set.seed(100)
+base_glass$`type of glass`<- make.names(base_glass$`type of glass`)
+base_glass$`type of glass`<- as.factor(base_glass$`type of glass`)
+split_data <-sample.split(Y = base_glass$`type of glass`,SplitRatio = 0.70 )
+train_data<-base_glass[split_data,]
+test_data<-base_glass[-split_data,]
+
+```
+```{r}
+library(caret)
+fitControl <- trainControl(
+                           method = "cv",    
+                           number = 5,
+                           savePredictions="final",
+                           classProbs = TRUE
+                           )
+```
+
+```{r}
+#Log reg
+fit_glmnet <- train (`type of glass`~.,
+                 train_data,
+                 method = "glmnet",
+                 tuneGrid = expand.grid(
+                    .alpha = 1,
+                    .lambda = 0.0002343928),
+                 metric="Mean_F1",
+                 preProc=c("center", "scale"),
+                 trControl = fitControl)
+
+pred_glmnet <- predict(fit_glmnet, test_data)                           
+confusionMatrix(pred_glmnet, test_data$`type of glass`) 
+```
+```{r}
+#rf
+metric<-"Accuracy"
+
+fit_rf <- train (`type of glass`~.,
+                  train_data,
+                  method = "rf",
+                  metric=metric,
+                  trControl = fitControl)
+
+pred_rf <- predict(fit_rf, test_data)                           
+confusionMatrix(pred_rf, test_data$`type of glass`) 
+```
+
+
+```{r}
+metric<-"Accuracy"
+model_knn <- train(`type of glass`~., data=train_data, method="knn", metric=metric, trControl=fitControl)
+model_knn
+```
+
+```
+
+```
+
+
+```{r}
+
+fit_nnet <- train(`type of glass` ~ ., train_data,
+                  method = "nnet",
+                  preProc=c("center", "scale"),
+                  metric="Accuracy",
+                  #tuneLength=20,
+                  tuneGrid = expand.grid(
+                    .size = 25,
+                    .decay = 0.003162278),
+                  trControl = fitControl,
+                  MaxNWts = 50000,
+                  maxit = 200,
+                  trace = FALSE)
+
+pred_nnet <- predict(fit_nnet, test_data)                           
+confusionMatrix(pred_nnet, test_data$`type of glass`) 
+```
+
+```
+
